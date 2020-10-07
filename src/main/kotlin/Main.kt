@@ -25,16 +25,17 @@ fun main() {
     println("Start state:")
     val startState = reader.nextInt()
 
-    println("Number of final states")
+    println("Number of final states:")
     val numOfFinalStates = reader.nextInt()
     val finalStates = ArrayList<Int>()
 
-    println("Final states")
+    println("Final states:")
     for (i in 1..numOfFinalStates) {
         finalStates.add(reader.nextInt())
     }
 
     val machine =
         FiniteStateMachine(alphabet, numOfStates, transitions, startState, finalStates).getNonDeterministicMachine()
+
     machine.display()
 }

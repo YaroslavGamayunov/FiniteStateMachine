@@ -15,16 +15,16 @@ class FiniteStateMachine(
 ) {
 
     enum class StateType {
-        START, FINAL, MEDIATE
+        START, FINAL
     }
 
-    data class State(var transitions: HashSet<Pair<String, State>>, var type: StateType, var id: Int)
+    class State(var transitions: HashSet<Pair<String, State>>, var type: EnumSet<StateType>, var id: Int)
 
     private var states: ArrayList<State> = ArrayList(numOfStates)
 
     init {
         for (i in 0 until numOfStates) {
-            states.add(State(HashSet(), StateType.MEDIATE, i))
+            states.add(State(HashSet(), EnumSet.noneOf(StateType::class.java), i))
         }
 
         for ((a, word, b) in transitions) {
@@ -32,8 +32,8 @@ class FiniteStateMachine(
         }
     }
 
-    var startState = states[startStateId].apply { type = StateType.START }
-    var finalStates = finalStateIds.map { id -> states[id].apply { type = StateType.FINAL } }.toList()
+    var startState = states[startStateId].apply { type.contains(StateType.START) }
+    var finalStates = finalStateIds.map { id -> states[id].apply { type.add(StateType.FINAL) } }.toList()
 
 
     fun getNonDeterministicMachine(): FiniteStateMachine {
@@ -66,7 +66,8 @@ class FiniteStateMachine(
         for ((currentId, set) in transitions.keys.withIndex()) {
             val state = State(
                 HashSet(),
-                if (set.any { it.type == StateType.FINAL }) StateType.FINAL else StateType.MEDIATE,
+                if (set.any { it.type.contains(StateType.FINAL) }) EnumSet.of(StateType.FINAL)
+                else EnumSet.noneOf(StateType::class.java),
                 currentId
             )
             oldToNewStates[set] = state
@@ -78,7 +79,7 @@ class FiniteStateMachine(
                 newState.transitions.add(oldTransition.first to oldToNewStates[oldTransition.second]!!)
             }
         }
-        oldToNewStates[hashSetOf(startState)]!!.type = StateType.START
+        oldToNewStates[hashSetOf(startState)]!!.type.add(StateType.START)
 
         val newTransitions = ArrayList<Triple<Int, String, Int>>()
 
@@ -92,17 +93,18 @@ class FiniteStateMachine(
             newStates.size,
             newTransitions,
             oldToNewStates[hashSetOf(startState)]!!.id,
-            newStates.filter { it.type == StateType.FINAL }.map { it.id }
+            newStates.filter { it.type.contains(StateType.FINAL) }.map { it.id }
         )
     }
 
-    private fun removeEpsilonTransitions() {
+    fun removeEpsilonTransitions() {
         makeTransitiveClosure()
         addFinalStates()
         addEdges()
         for (state in states) {
             state.transitions.removeIf { it.first == EPS_SYMBOL }
         }
+        finalStates = states.filter { it.type.contains(StateType.FINAL) }
     }
 
     private fun makeTransitiveClosure() {
@@ -122,52 +124,52 @@ class FiniteStateMachine(
     private fun addFinalStates() {
         for (state in states) {
             val hasEpsTransitionsToFinal =
-                state.transitions.any { it.first == EPS_SYMBOL && it.second.type == StateType.FINAL }
+                state.transitions.any { it.first == EPS_SYMBOL && it.second.type.contains(StateType.FINAL) }
             if (hasEpsTransitionsToFinal) {
-                state.type = StateType.FINAL
+                state.type.add(StateType.FINAL)
             }
         }
     }
 
     private fun addEdges() {
         val usedStates = HashSet<State>()
-        performDfs(startState) {
+        performDfs(startState) traverseFun@{
             usedStates.add(it)
-            var newTransitions = ArrayList<Pair<String, State>>()
 
-//            for (transition in it.transitions) {
-//                if (transition.first == EPS_SYMBOL) {
-//                    newTransitions.addAll(transition.second.transitions)
-//                }
-//            }
-//
-//            it.transitions.addAll(newTransitions)
-//            it.transitions.filter { transition -> !usedStates.contains(transition.second) }
-//                .map { transition -> transition.second }
-            arrayListOf()
+            val newTransitions = ArrayList<Pair<String, State>>()
+
+            for (transition in it.transitions) {
+                if (transition.first == EPS_SYMBOL) {
+                    newTransitions.addAll(transition.second.transitions)
+                }
+            }
+
+            it.transitions.addAll(newTransitions)
+
+            return@traverseFun it.transitions.filter { transition -> !usedStates.contains(transition.second) }
+                .map { transition -> transition.second }
         }
     }
 
     private fun performDfs(v: State, traverseFunction: (State) -> List<State>) {
-        var nextStates = traverseFunction(v)
+        val nextStates = traverseFunction(v)
         for (state in nextStates) {
-            //println(state)
-            //performDfs(state, traverseFunction)
+            performDfs(state, traverseFunction)
         }
     }
 
-    private fun getAvailableStates(v: State, traverseFunction: (State) -> List<State>): List<State> {
+    private fun getAvailableStates(startState: State, traverseFunction: (State) -> List<State>): List<State> {
         val q = ArrayDeque<State>()
         val availableStates = HashSet<State>()
 
-        q.push(v)
+        q.push(startState)
 
         while (q.isNotEmpty()) {
             val state = q.removeFirst()
             availableStates.add(state)
             q.addAll(traverseFunction(state).filter { !availableStates.contains(it) })
         }
-        return availableStates.toList()
+        return availableStates.apply { remove(startState) }.toList()
     }
 
     fun display(outputStream: OutputStream = System.out) {
@@ -176,7 +178,7 @@ class FiniteStateMachine(
         for (state in states) {
             for (transition in state.transitions) {
                 out.print(
-                    "${state.id} (${transition.first})---> ${transition.second.id} " +
+                    "${state.id} ---(${transition.first})---> ${transition.second.id} " +
                             "(${state.type} -> ${transition.second.type})\n"
                 )
             }
