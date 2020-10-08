@@ -172,6 +172,136 @@ class FiniteStateMachine(
         return availableStates.apply { remove(startState) }.toList()
     }
 
+    // minimization
+    fun buildTable(): HashSet<Pair<State, State>> {
+        val table = HashSet<Pair<State, State>>()
+        val q = ArrayDeque<Pair<State, State>>()
+
+        val backEdges = HashMap<Pair<State, String>, HashSet<State>>()
+
+        val usedStates = HashSet<State>()
+
+        performDfs(startState) traverseFun@{
+            usedStates.add(it)
+            it.transitions.forEach { (word, state) -> backEdges.getOrPut(state to word) { HashSet() }.add(it) }
+            return@traverseFun it.transitions.filter { (_, state) -> !usedStates.contains(state) }
+                .map { transition -> transition.second }
+        }
+
+        for (i in states) {
+            for (j in states) {
+                if (!table.contains(i to j) && i.type.contains(StateType.FINAL) != j.type.contains(StateType.FINAL)) {
+                    table.apply {
+                        add(i to j)
+                        add(j to i)
+                    }
+                    q.push(i to j)
+                }
+            }
+        }
+
+        while (q.isNotEmpty()) {
+            val (u, v) = q.removeFirst()
+            for (c in alphabet) {
+                for (r in backEdges[u to c.toString()] ?: hashSetOf()) {
+                    for (s in backEdges[v to c.toString()] ?: hashSetOf()) {
+                        if (!table.contains(r to s)) {
+                            table.apply {
+                                add(r to s)
+                                add(s to r)
+                            }
+                            q.push(r to s)
+                        }
+                    }
+                }
+            }
+        }
+        return table
+    }
+
+    fun makeComplete() {
+        states.add(0, State(HashSet(), EnumSet.noneOf(StateType::class.java), 0))
+        for (i in 0 until states.size) {
+            states[i].id = i
+        }
+        for (state in states) {
+            val existingWords = HashSet<String>()
+            for ((word, _) in state.transitions) {
+                existingWords.add(word)
+            }
+            for (c in alphabet) {
+                if (!existingWords.contains(c.toString())) {
+                    state.transitions.add(c.toString() to states[0])
+                }
+            }
+        }
+    }
+
+    fun getMinimalStateMachine(): FiniteStateMachine {
+        makeComplete()
+        val table = buildTable()
+        val component = HashMap<State, Int>()
+        val reachableFromStart = HashSet<State>()
+
+        performDfs(startState) traverseFun@{
+            reachableFromStart.add(it)
+            return@traverseFun it.transitions.filter { (_, state) -> !reachableFromStart.contains(state) }
+                .map { (_, state) -> state }
+        }
+
+        for (state in states) {
+            if (!table.contains(states[0] to state)) {
+                component[state] = 0
+            }
+        }
+
+        var numOfComponents = 0
+
+        for (i in 1 until states.size) {
+            if (!reachableFromStart.contains(states[i])) {
+                continue
+            }
+            if (!component.contains(states[i])) {
+                component[states[i]] = ++numOfComponents
+                for (j in i + 1 until states.size) {
+                    if (!table.contains(states[i] to states[j])) {
+                        component[states[j]] = numOfComponents
+                    }
+                }
+            }
+        }
+        return buildStateMachineOnComponents(component, numOfComponents)
+    }
+
+    private fun buildStateMachineOnComponents(
+        component: HashMap<State, Int>,
+        numOfComponents: Int
+    ): FiniteStateMachine {
+        val transitions = HashSet<Triple<Int, String, Int>>()
+        for (state in states) {
+            state.transitions.forEach { (word, nextState) ->
+                val c1: Int? = component[state]
+                val c2: Int? = component[nextState]
+
+                if (c1 != null && c2 != null) {
+                    transitions.add(Triple(c1, word, c2))
+                }
+            }
+        }
+
+        transitions.removeIf { it.third == component[states[0]] }
+
+        return FiniteStateMachine(
+            alphabet,
+            numOfComponents,
+            transitions.map { (a, word, b) ->
+                Triple(a - 1, word, b - 1)
+            },
+            component[startState]!! - 1,
+            finalStates.map { component[it]!! - 1 }.distinctBy { it })
+
+    }
+
     fun display(outputStream: OutputStream = System.out) {
         val out = PrintWriter(outputStream)
 

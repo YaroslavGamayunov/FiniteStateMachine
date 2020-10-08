@@ -35,7 +35,9 @@ fun main() {
     }
 
     val machine =
-        FiniteStateMachine(alphabet, numOfStates, transitions, startState, finalStates).getNonDeterministicMachine()
+        FiniteStateMachine(alphabet, numOfStates, transitions, startState, finalStates)
+            .getNonDeterministicMachine()
+            .getMinimalStateMachine()
 
     machine.display()
 }
