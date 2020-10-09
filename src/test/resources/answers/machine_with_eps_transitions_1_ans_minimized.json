@@ -1,0 +1,84 @@
+{
+  "alphabet": "abc",
+  "numOfStates": 8,
+  "transitions": [
+    {
+      "first": 0,
+      "second": "a",
+      "third": 2
+    },
+    {
+      "first": 1,
+      "second": "a",
+      "third": 3
+    },
+    {
+      "first": 1,
+      "second": "b",
+      "third": 2
+    },
+    {
+      "first": 2,
+      "second": "a",
+      "third": 4
+    },
+    {
+      "first": 2,
+      "second": "b",
+      "third": 2
+    },
+    {
+      "first": 3,
+      "second": "b",
+      "third": 1
+    },
+    {
+      "first": 3,
+      "second": "a",
+      "third": 3
+    },
+    {
+      "first": 4,
+      "second": "a",
+      "third": 6
+    },
+    {
+      "first": 5,
+      "second": "a",
+      "third": 6
+    },
+    {
+      "first": 5,
+      "second": "b",
+      "third": 7
+    },
+    {
+      "first": 6,
+      "second": "b",
+      "third": 1
+    },
+    {
+      "first": 6,
+      "second": "a",
+      "third": 5
+    },
+    {
+      "first": 7,
+      "second": "b",
+      "third": 2
+    },
+    {
+      "first": 7,
+      "second": "a",
+      "third": 5
+    }
+  ],
+  "startStateId": 0,
+  "finalStateIds": [
+    1,
+    2,
+    3,
+    6,
+    7
+  ]
+}

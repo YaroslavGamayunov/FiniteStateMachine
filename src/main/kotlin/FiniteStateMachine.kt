@@ -1,10 +1,27 @@
 import StateMachineAlphabetConstants.EPS_SYMBOL
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.Json.Default.stringify
+import kotlinx.serialization.json.JsonConfiguration
+import kotlinx.serialization.stringify
+import java.io.BufferedReader
+import java.io.FileReader
 import java.io.OutputStream
 import java.io.PrintWriter
 import java.util.*
+import javax.crypto.Mac
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
+
+@Serializable
+data class MachineConfiguration(
+    val alphabet: String,
+    val numOfStates: Int,
+    val transitions: List<Triple<Int, String, Int>>,
+    val startStateId: Int,
+    val finalStateIds: List<Int>
+)
 
 class FiniteStateMachine(
     private val alphabet: String,
@@ -14,13 +31,33 @@ class FiniteStateMachine(
     finalStateIds: List<Int>
 ) {
 
+    constructor(config: MachineConfiguration) : this(
+        config.alphabet,
+        config.numOfStates,
+        config.transitions,
+        config.startStateId,
+        config.finalStateIds
+    )
+
+    companion object {
+        fun buildFromJson(path: String): FiniteStateMachine {
+            val json = Json(JsonConfiguration(isLenient = true))
+
+            val reader = BufferedReader(FileReader(path))
+            val machineConfig = json.parse(MachineConfiguration.serializer(), reader.readLines().joinToString("\n"))
+
+            return FiniteStateMachine(machineConfig)
+        }
+    }
+
+
     enum class StateType {
         START, FINAL
     }
 
     class State(var transitions: HashSet<Pair<String, State>>, var type: EnumSet<StateType>, var id: Int)
 
-    private var states: ArrayList<State> = ArrayList(numOfStates)
+    var states: ArrayList<State> = ArrayList(numOfStates)
 
     init {
         for (i in 0 until numOfStates) {
@@ -36,7 +73,7 @@ class FiniteStateMachine(
     var finalStates = finalStateIds.map { id -> states[id].apply { type.add(StateType.FINAL) } }.toList()
 
 
-    fun getNonDeterministicMachine(): FiniteStateMachine {
+    fun getDeterministicMachine(): FiniteStateMachine {
         removeEpsilonTransitions()
         val q = ArrayDeque<HashSet<State>>()
         q.push(hashSetOf(startState))
@@ -302,6 +339,16 @@ class FiniteStateMachine(
 
     }
 
+    fun accept(word: String): Boolean {
+        var currentState = startState
+        for (c in word) {
+            val transition: Pair<String, State> =
+                currentState.transitions.find { it.first == c.toString() } ?: return false
+            currentState = transition.second
+        }
+        return currentState.type.contains(StateType.FINAL)
+    }
+
     fun display(outputStream: OutputStream = System.out) {
         val out = PrintWriter(outputStream)
 
@@ -318,6 +365,44 @@ class FiniteStateMachine(
         out.print("Final states: ")
         finalStates.forEach { out.print("${it.id} ") }
 
+        out.close()
+    }
+
+    fun printEdges(outputStream: OutputStream = System.out) {
+        val out = PrintWriter(outputStream)
+
+        for (state in states) {
+            for (transition in state.transitions) {
+                out.println("${state.id} ${transition.second.id} ${transition.first}")
+            }
+        }
+
+        out.close()
+    }
+
+    fun dumpAsJson(outputStream: OutputStream = System.out) {
+        val json = Json(JsonConfiguration(prettyPrint = true))
+        val out = PrintWriter(outputStream)
+
+        var transitionList = ArrayList<Triple<Int, String, Int>>()
+
+        for (state in states) {
+            for ((word, nextState) in state.transitions) {
+                transitionList.add(Triple(state.id, word, nextState.id))
+            }
+        }
+
+        out.write(
+            json.stringify(
+                MachineConfiguration.serializer(),
+                MachineConfiguration(
+                    alphabet,
+                    states.size,
+                    transitionList,
+                    startState.id,
+                    finalStates.map { it.id })
+            )
+        )
         out.close()
     }
 }

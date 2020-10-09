@@ -34,10 +34,47 @@ fun main() {
         finalStates.add(reader.nextInt())
     }
 
-    val machine =
-        FiniteStateMachine(alphabet, numOfStates, transitions, startState, finalStates)
-            .getNonDeterministicMachine()
-            .getMinimalStateMachine()
+    println("Action to perform on a machine (D - determine, M - minimize, C - check the word, S - stop actions):")
+    loop@ while (true) {
+        val action = reader.next()
 
-    machine.display()
+        when (action) {
+            "D" -> {
+                FiniteStateMachine(
+                    alphabet,
+                    numOfStates,
+                    transitions,
+                    startState,
+                    finalStates
+                ).getDeterministicMachine().apply { dumpAsJson() }
+            }
+
+            "M" -> {
+                FiniteStateMachine(
+                    alphabet,
+                    numOfStates,
+                    transitions,
+                    startState,
+                    finalStates
+                ).getMinimalStateMachine().apply { dumpAsJson() }
+            }
+
+            "C" -> {
+                val machine =
+                    FiniteStateMachine(
+                        alphabet,
+                        numOfStates,
+                        transitions,
+                        startState,
+                        finalStates
+                    ).getDeterministicMachine()
+
+                val word = reader.next()
+                println(if (machine.accept(word)) "ACCEPTED" else "REJECTED")
+            }
+            "S" -> {
+                break@loop
+            }
+        }
+    }
 }
