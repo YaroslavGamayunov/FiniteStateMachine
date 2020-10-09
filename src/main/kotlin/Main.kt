@@ -56,7 +56,7 @@ fun main() {
                     transitions,
                     startState,
                     finalStates
-                ).getMinimalStateMachine().apply { dumpAsJson() }
+                ).getDeterministicMachine().getMinimalStateMachine().apply { dumpAsJson() }
             }
 
             "C" -> {
