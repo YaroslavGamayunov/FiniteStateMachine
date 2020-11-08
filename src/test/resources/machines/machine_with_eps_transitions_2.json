@@ -1,0 +1,30 @@
+{
+  "alphabet": "ab",
+  "numOfStates": 4,
+  "transitions": [
+    {
+      "first": 0,
+      "second": "$",
+      "third": 1
+    },
+    {
+      "first": 1,
+      "second": "a",
+      "third": 2
+    },
+    {
+      "first": 2,
+      "second": "b",
+      "third": 3
+    },
+    {
+      "first": 3,
+      "second": "$",
+      "third": 0
+    }
+  ],
+  "startStateId": 0,
+  "finalStateIds": [
+    0
+  ]
+}
