@@ -50,7 +50,7 @@ test {
     useJUnitPlatform()
 }
 task runTestsWithReport {
-    test
+    dependsOn test
     finalizedBy jacocoTestReport
 }
 
