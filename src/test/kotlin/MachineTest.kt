@@ -1,67 +1,104 @@
-import kotlinx.serialization.json.Json
-import org.junit.Test
-import java.io.ByteArrayOutputStream
-import java.lang.StringBuilder
-import java.net.URL
-import java.nio.file.Paths
-import java.util.ArrayDeque
 import FiniteStateMachine.State
+import LoadingTools.Companion.getFullResourcePath
+import LoadingTools.Companion.readLines
+import TestConfigInfo.PATH_TO_TESTS_CONFIG
+import kotlinx.serialization.ImplicitReflectionSerializer
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.parseMap
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import java.io.FileInputStream
+import java.util.*
+import kotlin.collections.HashMap
+import kotlin.collections.HashSet
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.set
+
+object TestConfigInfo {
+    const val PATH_TO_TESTS_CONFIG = "test_paths_config.json"
+}
 
 class MachineTest {
+
+    data class TestDataEntry(
+        val input: FiniteStateMachine,
+        val determined: FiniteStateMachine,
+        val minimized: FiniteStateMachine
+    )
+
+    lateinit var withEpsilonTransitions: List<TestDataEntry>
+    lateinit var withoutEpsilonTransitions: List<TestDataEntry>
+
+    @Serializable
+    data class TestInfoEntry(
+        @SerialName("input") var pathToInput: String,
+        @SerialName("determined") var pathToDetermined: String,
+        @SerialName("minimized") var pathToMinimized: String
+    )
+
+    @ImplicitReflectionSerializer
+    @BeforeEach
+    fun setupTestData() {
+        val testsConfigurationRawData =
+            Json.parseMap<String, JsonArray>(readLines(PATH_TO_TESTS_CONFIG).joinToString("\n"))
+
+
+        val testsConfiguration =
+            testsConfigurationRawData.mapValues { (_, testCategory) ->
+                testCategory.jsonArray.map {
+                    Json.fromJson(
+                        TestInfoEntry.serializer(),
+                        it
+                    )
+                }
+            }
+
+        val machineLoader: ((TestInfoEntry) -> TestDataEntry) = { testEntry ->
+            TestDataEntry(
+                FiniteStateMachine.buildFromJson(FileInputStream(getFullResourcePath(testEntry.pathToInput))),
+                FiniteStateMachine.buildFromJson(FileInputStream(getFullResourcePath(testEntry.pathToDetermined))),
+                FiniteStateMachine.buildFromJson(FileInputStream(getFullResourcePath(testEntry.pathToMinimized)))
+            )
+        }
+
+        withEpsilonTransitions = testsConfiguration["withEpsilonTransitions"]?.map(machineLoader)!!
+        withoutEpsilonTransitions = testsConfiguration["withoutEpsilonTransitions"]?.map(machineLoader)!!
+    }
+
+    private fun generalDeterminationTest(data: List<TestDataEntry>) {
+        data.forEach {
+            assertMachinesEqual(it.input.buildDeterministicMachine(), it.determined)
+        }
+    }
+
+    private fun generalMinimizationTest(data: List<TestDataEntry>) {
+        data.forEach {
+            assertMachinesEqual(it.input.buildMinimalMachine(), it.minimized)
+        }
+    }
+
     @Test
     fun testDeterminationWithEpsilonTransitions() {
-        var numOfTests = 2
-        for (i in 1..numOfTests) {
-            val currentMachine =
-                FiniteStateMachine.buildFromJson(getFullResourcePath("machines/machine_with_eps_transitions_${i}.json"))
-                    .getDeterministicMachine()
-            val rightMachine =
-                FiniteStateMachine.buildFromJson(getFullResourcePath("answers/machine_with_eps_transitions_${i}_ans_determined.json"))
-
-            assertMachinesEqual(currentMachine, rightMachine)
-        }
+        generalDeterminationTest(withEpsilonTransitions)
     }
 
     @Test
     fun testDeterminationWithoutEpsTransitions() {
-        var numOfTests = 2
-        for (i in 1..numOfTests) {
-            val currentMachine =
-                FiniteStateMachine.buildFromJson(getFullResourcePath("machines/machine_without_eps_transitions_${i}.json"))
-                    .getDeterministicMachine()
-            val rightMachine =
-                FiniteStateMachine.buildFromJson(getFullResourcePath("answers/machine_without_eps_transitions_${i}_ans_determined.json"))
-
-            assertMachinesEqual(currentMachine, rightMachine)
-        }
-    }
-
-    @Test
-    fun testMinimizationWithoutEpsTransitions() {
-        var numOfTests = 2
-        for (i in 1..numOfTests) {
-            val currentMachine =
-                FiniteStateMachine.buildFromJson(getFullResourcePath("machines/machine_without_eps_transitions_${i}.json"))
-                    .getDeterministicMachine().getMinimalStateMachine()
-            val rightMachine =
-                FiniteStateMachine.buildFromJson(getFullResourcePath("answers/machine_without_eps_transitions_${i}_ans_minimized.json"))
-
-            assertMachinesEqual(currentMachine, rightMachine)
-        }
+        generalDeterminationTest(withoutEpsilonTransitions)
     }
 
     @Test
     fun testMinimizationWithEpsTransitions() {
-        var numOfTests = 2
-        for (i in 1..numOfTests) {
-            val currentMachine =
-                FiniteStateMachine.buildFromJson(getFullResourcePath("machines/machine_with_eps_transitions_${i}.json"))
-                    .getDeterministicMachine().getMinimalStateMachine()
-            val rightMachine =
-                FiniteStateMachine.buildFromJson(getFullResourcePath("answers/machine_with_eps_transitions_${i}_ans_minimized.json"))
+        generalMinimizationTest(withEpsilonTransitions)
+    }
 
-            assertMachinesEqual(currentMachine, rightMachine)
-        }
+    @Test
+    fun testMinimizationWithoutEpsTransitions() {
+        generalMinimizationTest(withoutEpsilonTransitions)
     }
 
 
@@ -72,17 +109,17 @@ class MachineTest {
     }
 
     private fun checkIsomorphism(firstMachine: FiniteStateMachine, secondMachine: FiniteStateMachine): Boolean {
-        var q = ArrayDeque<Pair<State, State>>()
-        var used = HashSet<Pair<State, State>>()
-        var stateMap = HashMap<State, State>()
+        val q = ArrayDeque<Pair<State, State>>()
+        val used = HashSet<Pair<State, State>>()
+        val stateMap = HashMap<State, State>()
 
         q.push(firstMachine.startState to secondMachine.startState)
 
         while (q.isNotEmpty()) {
-            var (a, b) = q.removeFirst()
+            val (a, b) = q.removeFirst()
             used.add(a to b)
             stateMap[a] = b
-            var equalStates = HashMap<String, Pair<Int, Int>>()
+            val equalStates = HashMap<String, Pair<Int, Int>>()
 
             for ((word, nextState) in a.transitions) {
                 equalStates.getOrPut(word) { -1 to -1 }
@@ -105,8 +142,8 @@ class MachineTest {
             }
 
             equalStates.forEach { (_, p) ->
-                var state1 = firstMachine.states[p.first]
-                var state2 = secondMachine.states[p.second]
+                val state1 = firstMachine.states[p.first]
+                val state2 = secondMachine.states[p.second]
                 if (stateMap.contains(state1) && stateMap[state1] != state2) {
                     return false
                 }
@@ -117,11 +154,5 @@ class MachineTest {
             }
         }
         return true
-    }
-
-    private fun getFullResourcePath(pathToResource: String): String {
-        val res = this::class.java.classLoader.getResource(pathToResource)
-        val file = Paths.get(res.toURI()).toFile()
-        return file.absolutePath
     }
 }

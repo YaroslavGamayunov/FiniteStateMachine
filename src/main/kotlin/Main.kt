@@ -46,7 +46,7 @@ fun main() {
                     transitions,
                     startState,
                     finalStates
-                ).getDeterministicMachine().apply { dumpAsJson() }
+                ).buildDeterministicMachine().apply { dumpAsJson() }
             }
 
             "M" -> {
@@ -56,7 +56,7 @@ fun main() {
                     transitions,
                     startState,
                     finalStates
-                ).getDeterministicMachine().getMinimalStateMachine().apply { dumpAsJson() }
+                ).buildMinimalMachine().apply { dumpAsJson() }
             }
 
             "C" -> {
@@ -67,7 +67,7 @@ fun main() {
                         transitions,
                         startState,
                         finalStates
-                    ).getDeterministicMachine()
+                    ).buildDeterministicMachine()
 
                 val word = reader.next()
                 println(if (machine.accept(word)) "ACCEPTED" else "REJECTED")

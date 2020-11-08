@@ -1,15 +1,9 @@
 import StateMachineAlphabetConstants.EPS_SYMBOL
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.Json.Default.stringify
 import kotlinx.serialization.json.JsonConfiguration
-import kotlinx.serialization.stringify
-import java.io.BufferedReader
-import java.io.FileReader
-import java.io.OutputStream
-import java.io.PrintWriter
+import java.io.*
 import java.util.*
-import javax.crypto.Mac
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
@@ -40,11 +34,15 @@ class FiniteStateMachine(
     )
 
     companion object {
-        fun buildFromJson(path: String): FiniteStateMachine {
+        fun buildFromJson(inputStream: InputStream): FiniteStateMachine {
             val json = Json(JsonConfiguration(isLenient = true))
 
-            val reader = BufferedReader(FileReader(path))
-            val machineConfig = json.parse(MachineConfiguration.serializer(), reader.readLines().joinToString("\n"))
+            val reader = BufferedReader(InputStreamReader(inputStream))
+
+            val machineConfig = json.parse(
+                MachineConfiguration.serializer(),
+                reader.readLines().joinToString("\n")
+            )
 
             return FiniteStateMachine(machineConfig)
         }
@@ -73,7 +71,7 @@ class FiniteStateMachine(
     var finalStates = finalStateIds.map { id -> states[id].apply { type.add(StateType.FINAL) } }.toList()
 
 
-    fun getDeterministicMachine(): FiniteStateMachine {
+    fun buildDeterministicMachine(): FiniteStateMachine {
         removeEpsilonTransitions()
         val q = ArrayDeque<HashSet<State>>()
         q.push(hashSetOf(startState))
@@ -274,7 +272,11 @@ class FiniteStateMachine(
         }
     }
 
-    fun getMinimalStateMachine(): FiniteStateMachine {
+    fun buildMinimalMachine(isDeterministic: Boolean = false): FiniteStateMachine {
+        if (!isDeterministic) {
+            return buildDeterministicMachine().buildMinimalMachine(true)
+        }
+
         makeComplete()
         val table = buildTable()
         val component = HashMap<State, Int>()

@@ -1,0 +1,26 @@
+{
+  "withEpsilonTransitions": [
+    {
+      "input": "machines/machine_with_eps_transitions_1.json",
+      "determined": "answers/machine_with_eps_transitions_1_ans_determined.json",
+      "minimized": "answers/machine_with_eps_transitions_1_ans_minimized.json"
+    },
+    {
+      "input": "machines/machine_with_eps_transitions_2.json",
+      "determined": "answers/machine_with_eps_transitions_2_ans_determined.json",
+      "minimized": "answers/machine_with_eps_transitions_2_ans_minimized.json"
+    }
+  ],
+  "withoutEpsilonTransitions": [
+    {
+      "input": "machines/machine_without_eps_transitions_1.json",
+      "determined": "answers/machine_without_eps_transitions_1_ans_determined.json",
+      "minimized": "answers/machine_without_eps_transitions_1_ans_minimized.json"
+    },
+    {
+      "input": "machines/machine_without_eps_transitions_2.json",
+      "determined": "answers/machine_without_eps_transitions_2_ans_determined.json",
+      "minimized": "answers/machine_without_eps_transitions_2_ans_minimized.json"
+    }
+  ]
+}
