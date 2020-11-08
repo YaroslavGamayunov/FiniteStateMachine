@@ -24,7 +24,8 @@ jobs:
       
       - name: Setting up the environment
         run: |
-          sudo apt install default-jre
+          sudo apt -y install default-jre
+          ./gradlew
           ./gradlew runTestsWithReport
       - name: jacoco-badge-generator
         uses: cicirello/jacoco-badge-generator@v1.0.0
