@@ -1,4 +1,5 @@
 import StateMachineAlphabetConstants.EPS_SYMBOL
+import kotlinx.io.InputStream
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
@@ -18,7 +19,7 @@ data class MachineConfiguration(
 )
 
 class FiniteStateMachine(
-    private val alphabet: String,
+    private var alphabet: String,
     numOfStates: Int,
     transitions: List<Triple<Int, String, Int>>,
     startStateId: Int,
@@ -46,6 +47,57 @@ class FiniteStateMachine(
 
             return FiniteStateMachine(machineConfig)
         }
+
+        // Accepts regular expression in Reverse Polish Notation
+        fun buildFromRegex(inputStream: InputStream = System.`in`): FiniteStateMachine {
+            val reader = BufferedReader(InputStreamReader(inputStream))
+            val regularExpression = reader.readLine()
+
+            val deque = ArrayDeque<FiniteStateMachine>()
+
+            for (c in regularExpression) {
+
+                if (c.isLetterOrDigit()) {
+                    deque.addLast(
+                        FiniteStateMachine(
+                            c.toString(), 2,
+                            listOf(Triple(0, c.toString(), 1)),
+                            0,
+                            listOf(1)
+                        )
+                    )
+                }
+
+                when (c) {
+                    '.' -> {
+                        if (deque.size < 2) {
+                            throw IllegalArgumentException("Illegal number of arguments in regex '.' operation")
+                        }
+
+                        val b = deque.removeLast()
+                        val a = deque.removeLast()
+
+                        deque.addLast(a * b)
+                    }
+
+                    '+' -> {
+                        if (deque.size < 2) {
+                            throw IllegalArgumentException("Illegal number of arguments in regex '+' operation")
+                        }
+
+                        val b = deque.removeLast()
+                        val a = deque.removeLast()
+
+                        deque.addLast(a + b)
+                    }
+
+                    '*' -> {
+                        deque.addLast(deque.removeLast().kleeneStar())
+                    }
+                }
+            }
+            return deque.last
+        }
     }
 
 
@@ -67,8 +119,9 @@ class FiniteStateMachine(
         }
     }
 
-    var startState = states[startStateId].apply { type.contains(StateType.START) }
-    var finalStates = finalStateIds.map { id -> states[id].apply { type.add(StateType.FINAL) } }.toList()
+    var startState: State = states[startStateId].apply { type.contains(StateType.START) }
+    var finalStates: MutableList<State> =
+        finalStateIds.map { id -> states[id].apply { type.add(StateType.FINAL) } }.toMutableList()
 
 
     fun buildDeterministicMachine(): FiniteStateMachine {
@@ -139,7 +192,7 @@ class FiniteStateMachine(
         for (state in states) {
             state.transitions.removeIf { it.first == EPS_SYMBOL }
         }
-        finalStates = states.filter { it.type.contains(StateType.FINAL) }
+        finalStates = states.filter { it.type.contains(StateType.FINAL) }.toMutableList()
     }
 
     private fun makeTransitiveClosure() {
@@ -351,6 +404,86 @@ class FiniteStateMachine(
         return currentState.type.contains(StateType.FINAL)
     }
 
+    // Creates copies of this and other and merges their states so that they dont intersect and puts result in a
+    private fun mergeCopies(other: FiniteStateMachine): Pair<FiniteStateMachine, FiniteStateMachine> {
+        val a = this.copy()
+        val b = other.copy()
+        b.states.forEach { it.id += a.states.size }
+        a.alphabet += b.alphabet
+        a.alphabet = a.alphabet.toCharArray().distinct().joinToString("")
+        return a to b
+    }
+
+    operator fun plus(other: FiniteStateMachine): FiniteStateMachine {
+        val (a, b) = mergeCopies(other)
+
+        val startState = State(
+            hashSetOf(EPS_SYMBOL to a.startState, EPS_SYMBOL to b.startState),
+            EnumSet.of(StateType.START),
+            a.states.size + b.states.size
+        )
+
+        a.startState.type.remove(StateType.START)
+        b.startState.type.remove(StateType.START)
+
+        a.startState = startState
+        a.states.addAll(b.states)
+        a.states.add(startState)
+
+        a.finalStates.addAll(b.finalStates)
+        return a.buildMinimalMachine()
+    }
+
+    operator fun times(other: FiniteStateMachine): FiniteStateMachine {
+        val (a, b) = mergeCopies(other)
+
+        b.startState.type.remove(StateType.START)
+        a.finalStates.forEach {
+            it.transitions.add(EPS_SYMBOL to b.startState)
+            it.type.remove(StateType.FINAL)
+        }
+
+        a.finalStates = b.finalStates
+        a.states.addAll(b.states)
+
+        return a.buildMinimalMachine()
+    }
+
+    operator fun times(str: String): FiniteStateMachine {
+        val a = this.copy()
+
+
+        val transitions = ArrayList<Triple<Int, String, Int>>()
+
+        for (i in str.indices) {
+            transitions.add(Triple(i, str[i].toString(), i + 1))
+        }
+
+        alphabet = str.toCharArray().distinct().joinToString("")
+        val machine = FiniteStateMachine(alphabet, str.length + 1, transitions, 0, listOf(str.length))
+
+        return a * machine
+    }
+
+    fun kleeneStar(): FiniteStateMachine {
+        val a = this.copy()
+
+        val startState = State(
+            hashSetOf(EPS_SYMBOL to a.startState),
+            EnumSet.of(StateType.START, StateType.FINAL),
+            a.states.size
+        )
+
+        // TODO Create a function for adding a new state
+        a.states.add(startState)
+        a.finalStates.add(startState)
+
+        a.startState.type.remove(StateType.START)
+        a.startState = startState
+        a.finalStates.forEach { it.transitions.add(EPS_SYMBOL to startState) }
+        return a.buildMinimalMachine()
+    }
+
     fun display(outputStream: OutputStream = System.out) {
         val out = PrintWriter(outputStream)
 
@@ -386,7 +519,7 @@ class FiniteStateMachine(
         val json = Json(JsonConfiguration(prettyPrint = true))
         val out = PrintWriter(outputStream)
 
-        var transitionList = ArrayList<Triple<Int, String, Int>>()
+        val transitionList = ArrayList<Triple<Int, String, Int>>()
 
         for (state in states) {
             for ((word, nextState) in state.transitions) {
@@ -406,6 +539,13 @@ class FiniteStateMachine(
             )
         )
         out.close()
+    }
+
+
+    fun copy(): FiniteStateMachine {
+        val baos = ByteArrayOutputStream()
+        dumpAsJson(baos)
+        return buildFromJson(ByteArrayInputStream(baos.toByteArray()))
     }
 }
 
