@@ -61,10 +61,26 @@ task runTestsWithReport {
     finalizedBy jacocoTestReport
 }
 
-jar {
+task buildStateMachineCLI(type: Jar) {
     manifest {
-        attributes 'Main-Class': 'MainKt'
+        attributes 'Main-Class': 'cli.StateMachineCLIKt'
     }
 
+    version = "1.0"
+    archivesBaseName = "StateMachineCLI"
+
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
+task buildProblemCLI(type: Jar) {
+    manifest {
+        attributes 'Main-Class': 'cli.ProblemCLIKt'
+    }
+
+    version = "1.0"
+    archivesBaseName = "ProblemCLI"
+
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
 }
