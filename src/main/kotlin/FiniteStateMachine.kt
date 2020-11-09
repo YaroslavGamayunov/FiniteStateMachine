@@ -394,14 +394,23 @@ class FiniteStateMachine(
 
     }
 
-    fun accept(word: String): Boolean {
+    fun accepts(word: String): Boolean {
+        if (startState.type.contains(StateType.FINAL) && word.isEmpty()) {
+            return true
+        }
+
         var currentState = startState
+
         for (c in word) {
             val transition: Pair<String, State> =
                 currentState.transitions.find { it.first == c.toString() } ?: return false
             currentState = transition.second
         }
         return currentState.type.contains(StateType.FINAL)
+    }
+
+    operator fun invoke(word: String): Boolean {
+        return accepts(word)
     }
 
     // Creates copies of this and other and merges their states so that they dont intersect and puts result in a
@@ -449,22 +458,6 @@ class FiniteStateMachine(
         return a.buildMinimalMachine()
     }
 
-    operator fun times(str: String): FiniteStateMachine {
-        val a = this.copy()
-
-
-        val transitions = ArrayList<Triple<Int, String, Int>>()
-
-        for (i in str.indices) {
-            transitions.add(Triple(i, str[i].toString(), i + 1))
-        }
-
-        alphabet = str.toCharArray().distinct().joinToString("")
-        val machine = FiniteStateMachine(alphabet, str.length + 1, transitions, 0, listOf(str.length))
-
-        return a * machine
-    }
-
     fun kleeneStar(): FiniteStateMachine {
         val a = this.copy()
 
@@ -499,18 +492,6 @@ class FiniteStateMachine(
         out.println("Start state: ${startState.id}")
         out.print("Final states: ")
         finalStates.forEach { out.print("${it.id} ") }
-
-        out.close()
-    }
-
-    fun printEdges(outputStream: OutputStream = System.out) {
-        val out = PrintWriter(outputStream)
-
-        for (state in states) {
-            for (transition in state.transitions) {
-                out.println("${state.id} ${transition.second.id} ${transition.first}")
-            }
-        }
 
         out.close()
     }

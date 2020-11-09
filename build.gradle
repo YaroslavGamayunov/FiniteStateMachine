@@ -31,9 +31,11 @@ jacocoTestReport {
     }
 }
 
+
 compileKotlin {
     kotlinOptions.jvmTarget = "1.8"
-    kotlinOptions.freeCompilerArgs = ['-Xuse-experimental=kotlinx.serialization.InternalSerializationApi']
+    kotlinOptions.freeCompilerArgs = ['-Xuse-experimental=kotlinx.serialization.InternalSerializationApi',
+                                      '-Xuse-experimental=kotlinx.serialization.UnstableDefault']
 }
 compileTestKotlin {
     kotlinOptions.jvmTarget = "1.8"

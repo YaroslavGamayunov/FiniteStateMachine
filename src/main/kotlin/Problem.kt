@@ -10,14 +10,9 @@ import kotlin.math.min
  * such that language of regex contains n-character long words
  */
 
-fun main() {
-    println("Put regex on the first line, then k and l on the second line:")
-    val scanner = Scanner(System.`in`)
-    val regex = scanner.nextLine()
-    val machine = FiniteStateMachine.buildFromRegex(regex.byteInputStream())
+fun solveProblem(regex: String, k: Int, l: Int): Int {
 
-    val k = scanner.nextInt()
-    val l = scanner.nextInt()
+    val machine = FiniteStateMachine.buildFromRegex(regex.byteInputStream())
 
     val dp = HashMap<FiniteStateMachine.State, ArrayList<TreeSet<Int>>>()
 
@@ -44,7 +39,7 @@ fun main() {
         }
     }
 
-    println("The answer is ${if (minimalAnswer != Int.MAX_VALUE) minimalAnswer.toString() else "INF"}")
+    return minimalAnswer
 }
 
 fun fillDpCell(
@@ -56,4 +51,29 @@ fun fillDpCell(
     for (i in 1..k) {
         dp[state]!!.add(TreeSet())
     }
+}
+
+fun main(args: Array<String>) {
+    val regex: String
+    val k: Int
+    val l: Int
+
+    if (args.isEmpty()) {
+        println("Put regex on the first line, then k and l on the second line:")
+        val scanner = Scanner(System.`in`)
+        regex = scanner.nextLine()
+        k = scanner.nextInt()
+        l = scanner.nextInt()
+    } else {
+        if (args.size < 3) {
+            println("Too few arguments, expected 3 but got ${args.size}")
+            return
+        }
+        regex = args[0]
+        k = args[1].toInt()
+        l = args[2].toInt()
+    }
+
+    val result = solveProblem(regex, k, l)
+    println("The answer is ${if (result != Int.MAX_VALUE) result.toString() else "INF"}")
 }
