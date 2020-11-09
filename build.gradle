@@ -25,17 +25,21 @@ jacoco {
 }
 
 jacocoTestReport {
+    doFirst {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: 'cli')
+        }))
+    }
+
     reports {
         xml.enabled true
         csv.enabled true
     }
 }
 
-
 compileKotlin {
     kotlinOptions.jvmTarget = "1.8"
-    kotlinOptions.freeCompilerArgs = ['-Xuse-experimental=kotlinx.serialization.InternalSerializationApi',
-                                      '-Xuse-experimental=kotlinx.serialization.UnstableDefault']
+    kotlinOptions.freeCompilerArgs = ['-Xuse-experimental=kotlinx.serialization.InternalSerializationApi']
 }
 compileTestKotlin {
     kotlinOptions.jvmTarget = "1.8"

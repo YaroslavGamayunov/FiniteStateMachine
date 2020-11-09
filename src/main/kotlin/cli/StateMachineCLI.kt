@@ -1,3 +1,6 @@
+package cli
+
+import FiniteStateMachine
 import java.util.*
 import kotlin.collections.ArrayList
 
