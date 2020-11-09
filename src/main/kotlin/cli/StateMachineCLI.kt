@@ -1,3 +1,6 @@
+package cli
+
+import FiniteStateMachine
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -70,7 +73,7 @@ fun main() {
                     ).buildDeterministicMachine()
 
                 val word = reader.next()
-                println(if (machine.accept(word)) "ACCEPTED" else "REJECTED")
+                println(if (machine.accepts(word)) "ACCEPTED" else "REJECTED")
             }
             "S" -> {
                 break@loop

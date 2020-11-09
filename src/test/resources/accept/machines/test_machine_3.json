@@ -1,0 +1,31 @@
+{
+  "alphabet": "abcd",
+  "numOfStates": 2,
+  "transitions": [
+    {
+      "first": 0,
+      "second": "a",
+      "third": 0
+    },
+    {
+      "first": 0,
+      "second": "b",
+      "third": 0
+    },
+    {
+      "first": 0,
+      "second": "c",
+      "third": 0
+    },
+    {
+      "first": 0,
+      "second": "d",
+      "third": 1
+    }
+  ],
+  "startStateId": 0,
+  "finalStateIds": [
+    0,
+    1
+  ]
+}

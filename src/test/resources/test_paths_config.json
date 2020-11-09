@@ -1,26 +1,40 @@
 {
-  "withEpsilonTransitions": [
+  "dm_WithEpsilonTransitions_config": [
     {
-      "input": "machines/machine_with_eps_transitions_1.json",
-      "determined": "answers/machine_with_eps_transitions_1_ans_determined.json",
-      "minimized": "answers/machine_with_eps_transitions_1_ans_minimized.json"
+      "input": "determination_minimization/machines/machine_with_eps_transitions_1.json",
+      "determined": "determination_minimization/answers/machine_with_eps_transitions_1_ans_determined.json",
+      "minimized": "determination_minimization/answers/machine_with_eps_transitions_1_ans_minimized.json"
     },
     {
-      "input": "machines/machine_with_eps_transitions_2.json",
-      "determined": "answers/machine_with_eps_transitions_2_ans_determined.json",
-      "minimized": "answers/machine_with_eps_transitions_2_ans_minimized.json"
+      "input": "determination_minimization/machines/machine_with_eps_transitions_2.json",
+      "determined": "determination_minimization/answers/machine_with_eps_transitions_2_ans_determined.json",
+      "minimized": "determination_minimization/answers/machine_with_eps_transitions_2_ans_minimized.json"
     }
   ],
-  "withoutEpsilonTransitions": [
+  "dm_WithoutEpsilonTransitions_config": [
     {
-      "input": "machines/machine_without_eps_transitions_1.json",
-      "determined": "answers/machine_without_eps_transitions_1_ans_determined.json",
-      "minimized": "answers/machine_without_eps_transitions_1_ans_minimized.json"
+      "input": "determination_minimization/machines/machine_without_eps_transitions_1.json",
+      "determined": "determination_minimization/answers/machine_without_eps_transitions_1_ans_determined.json",
+      "minimized": "determination_minimization/answers/machine_without_eps_transitions_1_ans_minimized.json"
     },
     {
-      "input": "machines/machine_without_eps_transitions_2.json",
-      "determined": "answers/machine_without_eps_transitions_2_ans_determined.json",
-      "minimized": "answers/machine_without_eps_transitions_2_ans_minimized.json"
+      "input": "determination_minimization/machines/machine_without_eps_transitions_2.json",
+      "determined": "determination_minimization/answers/machine_without_eps_transitions_2_ans_determined.json",
+      "minimized": "determination_minimization/answers/machine_without_eps_transitions_2_ans_minimized.json"
+    }
+  ],
+  "accept_test_config": [
+    {
+      "input": "accept/machines/test_machine_1.json",
+      "answers": "accept/answers/machine_1_answers.json"
+    },
+    {
+      "input": "accept/machines/test_machine_2.json",
+      "answers": "accept/answers/machine_2_answers.json"
+    },
+    {
+      "input": "accept/machines/test_machine_3.json",
+      "answers": "accept/answers/machine_3_answers.json"
     }
   ]
 }

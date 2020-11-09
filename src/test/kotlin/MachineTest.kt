@@ -5,11 +5,14 @@ import TestConfigInfo.PATH_TO_TESTS_CONFIG
 import kotlinx.serialization.ImplicitReflectionSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.parseMap
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.io.FileInputStream
 import java.util.*
 import kotlin.collections.HashMap
@@ -24,17 +27,31 @@ object TestConfigInfo {
 
 class MachineTest {
 
-    data class TestDataEntry(
+    data class DeterminationMinimizationDataEntry(
         val input: FiniteStateMachine,
         val determined: FiniteStateMachine,
         val minimized: FiniteStateMachine
     )
 
-    lateinit var withEpsilonTransitions: List<TestDataEntry>
-    lateinit var withoutEpsilonTransitions: List<TestDataEntry>
+    data class AcceptDataEntry(
+        val input: FiniteStateMachine,
+        val accepts: List<String>,
+        val rejects: List<String>
+    )
+
+
+    private lateinit var withEpsilonTransitions: List<DeterminationMinimizationDataEntry>
+    private lateinit var withoutEpsilonTransitions: List<DeterminationMinimizationDataEntry>
+    private lateinit var acceptTestData: List<AcceptDataEntry>
 
     @Serializable
-    data class TestInfoEntry(
+    data class AcceptTestEntryInfo(
+        @SerialName("input") var inputPath: String,
+        @SerialName("answers") var answerPath: String
+    )
+
+    @Serializable
+    data class DeterminationMinimizationEntryInfo(
         @SerialName("input") var pathToInput: String,
         @SerialName("determined") var pathToDetermined: String,
         @SerialName("minimized") var pathToMinimized: String
@@ -47,35 +64,59 @@ class MachineTest {
             Json.parseMap<String, JsonArray>(readLines(PATH_TO_TESTS_CONFIG).joinToString("\n"))
 
 
-        val testsConfiguration =
-            testsConfigurationRawData.mapValues { (_, testCategory) ->
-                testCategory.jsonArray.map {
-                    Json.fromJson(
-                        TestInfoEntry.serializer(),
-                        it
-                    )
+        val determinationMinimizationConfig =
+            testsConfigurationRawData.filterKeys { it.startsWith("dm_") }
+                .mapValues { (_, testCategory) ->
+                    testCategory.jsonArray.map {
+                        Json.fromJson(
+                            DeterminationMinimizationEntryInfo.serializer(),
+                            it
+                        )
+                    }
                 }
-            }
 
-        val machineLoader: ((TestInfoEntry) -> TestDataEntry) = { testEntry ->
-            TestDataEntry(
+        val machineLoader: ((DeterminationMinimizationEntryInfo) -> DeterminationMinimizationDataEntry) = { testEntry ->
+            DeterminationMinimizationDataEntry(
                 FiniteStateMachine.buildFromJson(FileInputStream(getFullResourcePath(testEntry.pathToInput))),
                 FiniteStateMachine.buildFromJson(FileInputStream(getFullResourcePath(testEntry.pathToDetermined))),
                 FiniteStateMachine.buildFromJson(FileInputStream(getFullResourcePath(testEntry.pathToMinimized)))
             )
         }
 
-        withEpsilonTransitions = testsConfiguration["withEpsilonTransitions"]?.map(machineLoader)!!
-        withoutEpsilonTransitions = testsConfiguration["withoutEpsilonTransitions"]?.map(machineLoader)!!
+        withEpsilonTransitions =
+            determinationMinimizationConfig["dm_WithEpsilonTransitions_config"]?.map(machineLoader)!!
+        withoutEpsilonTransitions =
+            determinationMinimizationConfig["dm_WithoutEpsilonTransitions_config"]?.map(machineLoader)!!
+
+        val acceptConfig =
+            testsConfigurationRawData.filterKeys { it.startsWith("accept_") }.mapValues { (_, testCategory) ->
+                testCategory.jsonArray.map {
+                    Json.fromJson(
+                        AcceptTestEntryInfo.serializer(),
+                        it
+                    )
+                }
+            }
+
+        acceptTestData = acceptConfig["accept_test_config"]!!.map { it ->
+            val answers: Map<String, JsonElement> = Json.parseMap(readLines(it.answerPath).joinToString("\n"))
+            AcceptDataEntry(
+                FiniteStateMachine.buildFromJson(FileInputStream(getFullResourcePath(it.inputPath))),
+                answers["accepts"]!!.jsonArray.map { str -> Json.fromJson(String.serializer(), str) },
+                answers["rejects"]!!.jsonArray.map { str -> Json.fromJson(String.serializer(), str) }
+            )
+        }
+
+
     }
 
-    private fun generalDeterminationTest(data: List<TestDataEntry>) {
+    private fun generalDeterminationTest(data: List<DeterminationMinimizationDataEntry>) {
         data.forEach {
             assertMachinesEqual(it.input.buildDeterministicMachine(), it.determined)
         }
     }
 
-    private fun generalMinimizationTest(data: List<TestDataEntry>) {
+    private fun generalMinimizationTest(data: List<DeterminationMinimizationDataEntry>) {
         data.forEach {
             assertMachinesEqual(it.input.buildMinimalMachine(), it.minimized)
         }
@@ -99,6 +140,26 @@ class MachineTest {
     @Test
     fun testMinimizationWithoutEpsTransitions() {
         generalMinimizationTest(withoutEpsilonTransitions)
+    }
+
+    @Test
+    fun testAccept() {
+        for ((machine, accepts, rejects) in acceptTestData) {
+            for (word in accepts) {
+                assert(machine(word))
+            }
+            for (word in rejects) {
+                assert(!machine(word))
+            }
+        }
+    }
+
+    @Test
+    fun testRegexParsing() {
+        assertThrows<IllegalArgumentException> { FiniteStateMachine.buildFromRegex("a+b".byteInputStream()) }
+        assertThrows<IllegalArgumentException> { FiniteStateMachine.buildFromRegex("+a.".byteInputStream()) }
+        assertThrows<IllegalArgumentException> { FiniteStateMachine.buildFromRegex("a*.bcd".byteInputStream()) }
+        assertThrows<IllegalArgumentException> { FiniteStateMachine.buildFromRegex("ab+.b**cd".byteInputStream()) }
     }
 
 

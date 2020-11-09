@@ -1,0 +1,18 @@
+{
+  "accepts": [
+    "aaaaa",
+    "bbbbbbbbb",
+    "ccccccc",
+    "abcd",
+    "acd",
+    "acacac",
+    ""
+  ],
+  "rejects": [
+    "accddddccc",
+    "accdc",
+    "dcccc",
+    "adccv",
+    "cdc"
+  ]
+}
