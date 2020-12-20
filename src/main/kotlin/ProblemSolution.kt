@@ -22,7 +22,7 @@ fun solveProblem(regex: String, k: Int, l: Int): Int {
 
     dp[machine.startState]!![0].add(0)
 
-    for (i in 0..(k * k)) {
+    for (i in 0..(machine.states.size * k)) {
         for (state in machine.states) {
             if (dp[state]!![i % k].contains(i)) {
                 for ((_, nextState) in state.transitions) {
@@ -34,6 +34,10 @@ fun solveProblem(regex: String, k: Int, l: Int): Int {
 
     var minimalAnswer = Int.MAX_VALUE
     for (state in machine.finalStates) {
+        if (!state.type.contains(FiniteStateMachine.StateType.FINAL)) {
+            continue
+        }
+
         dp[state]!![l].min()?.let {
             minimalAnswer = min(minimalAnswer, it)
         }
